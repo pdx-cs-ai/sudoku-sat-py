@@ -1,0 +1,78 @@
+\documentclass{article}
+\usepackage{bigpage}
+\usepackage{blockpar}
+\usepackage{blocktitle}
+\usepackage{czt}
+\usepackage{url}
+
+\title{Sudoku}
+\author{Bart Massey}
+\date{29 March 2016}
+
+\begin{document}
+\maketitle
+
+This document describes the format of a Sudoku solution.
+It is assumed that the reader is at least familiar with the
+Sudoku grid. We begin by describing some of the sizes and
+dimensions relevant to the problem.
+
+\begin{zed}
+  SQUARE == 3 \\
+  SIDE == SQUARE * SQUARE \\
+  ROW == 1 \upto SIDE \\
+  COL == 1 \upto SIDE \\
+  VALUE == 1 \upto SIDE
+\end{zed}
+
+An important concept in Sudoku is the ``sub-board'' or
+``group''.  It is important to know what coordinate group a
+given coordinate is in.
+
+\begin{axdef}
+  group : 1 \upto SIDE \fun 1 \upto SQUARE
+\where
+  \forall x : 1 \upto SIDE @ \\
+  \t1 group(x) = (x - 1) \div SQUARE + 1
+\end{axdef}
+
+There are basically three constraints on a partial Sudoku
+solution: the same value cannot appear twice within a row;
+the same value cannot appear twice within a column; the same
+value cannot appear twice within a sub-board.
+
+\begin{schema}{Sudoku}
+  board : ROW \cross COL \pfun VALUE
+\where
+\forall r : ROW; c_1, c_2: COL | \\
+  \t1 c_1 \neq c_2 \land \\
+  \t1 (r, c_1) \in \dom(board) \land (r, c_2) \in \dom(board) @ \\
+  \t2   board(r, c_1) \neq board(r, c_2)
+\also
+  \forall r_1, r_2 : ROW; c: COL | \\
+  \t1 r_1 \neq r_2 \land \\
+  \t1 (r_1, c) \in \dom(board) \land (r_2, c) \in \dom(board) @ \\
+  \t2   board(r_1, c) \neq board(r_2, c)
+\also
+  \forall r_1, r_2 : ROW; c_1, c_2: COL | \\
+  \t1 (r_1, c_1) \neq (r_2, c_2) \land \\
+  \t1 (r_1, c_1) \in \dom(board) \land (r_2, c_2) \in \dom(board) \land \\
+  \t1 group(r_1) = group(r_2) \land group(c_1) = group(c_2) @ \\
+  \t2   board(r_1, c_1) \neq board(r_2, c_2)
+\end{schema}
+
+A solution to a Sudoku problem is a total assignment of
+values to squares of the problem that respects the initial
+partial assignment and the legality constraints.
+
+\begin{schema}{SolveSudoku}
+  problem? : Sudoku
+\also
+  solution! : Sudoku
+\where
+  problem?.board \subseteq solution!.board
+\also
+  solution!.board \in ROW \cross COL \fun VALUE
+\end{schema}
+
+\end{document}
