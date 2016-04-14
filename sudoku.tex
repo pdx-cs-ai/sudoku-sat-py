@@ -5,17 +5,32 @@
 \usepackage{czt}
 \usepackage{url}
 
-\title{Sudoku}
+\title{Solving Sudoku via SAT}
 \author{Bart Massey}
-\date{29 March 2016}
+\date{12 April 2016}
 
 \begin{document}
 \maketitle
 
-This document describes the format of a Sudoku solution.
-It is assumed that the reader is at least familiar with the
-Sudoku grid. We begin by describing some of the sizes and
-dimensions relevant to the problem.
+In this document, we describe the construction of a Sudoku
+solver that operates in three phases: construction of a prop
+CNF SAT instance from the Sudoku instance, use of a SAT solver
+to solve the SAT instance, and extracting the solution to the
+Sudoku instance from the SAT solution. The constructor and
+extractor are written in Python, and off-the-shelf SAT
+solvers are used. Runtimes are very fast independent of
+problem ``difficulty'', on the order of 150 milliseconds on
+the author's desktop box.
+
+\section{Solving Sudoku}
+
+This section describes the properties of a Sudoku solution.
+It is written using the Z specification notation for
+precision and clarity.  It is assumed that the reader is at
+least familiar with the Sudoku grid.
+
+We begin by describing some of the sizes and dimensions
+relevant to the problem.
 
 \begin{zed}
   SQUARE == 3 \\
@@ -61,8 +76,8 @@ value cannot appear twice within a sub-board.
   \t2   board(r_1, c_1) \neq board(r_2, c_2)
 \end{schema}
 
-A solution to a Sudoku problem is a total assignment of
-values to squares of the problem that respects the initial
+A solution to a Sudoku instance is a total assignment of
+values to squares of the instance that respects the initial
 partial assignment and the legality constraints.
 
 \begin{schema}{SolveSudoku}
@@ -74,5 +89,87 @@ partial assignment and the legality constraints.
 \also
   solution!.board \in ROW \cross COL \fun VALUE
 \end{schema}
+
+\section{Prop. CNF SAT Instance Extraction}
+
+The logical description of the previous section greatly
+facilitates reducing a Sudoku instance to a Prop. CNF SAT
+instance whose solution gives a solution to the Sudoku
+instance.
+
+We will represent the board relation using atoms of the form
+$B_{rcv}$ which will be interpreted as true iff the board at
+row $r$ and column $c$ has value $v$. There are $9^3=729$
+such atoms. We will establish a series of constraints,
+extracted from the Z specification, that together ensure
+that any satisfying assignment to the $B$s will be
+interpretable as a solution to the Sudoku instance.
+
+\begin{enumerate}
+\item We require that the
+  solution match the given Sudoku instance. To do this,
+  we emit unary clauses of the form $$
+    B_{rcv}
+  $$ for each $r$, $c$ and $v$ specified in the Sudoku
+    instance description.
+\item We require that the $board$ relation
+  is total. To do this, we emit clauses of the form $$
+    (B_{rc1} \lor B_{rc2} \lor \ldots \lor B_{rc9})
+  $$ for every $r$ and $c$. Note that these are the
+  only clauses in the description of arity greater than two.
+\item We require that the $board$ relation
+  is a function. To do this, we emit clauses of the form $$
+    (\lnot B_{rcv_1} \lor \lnot B_{rcv_2})
+  $$ for every $r$, $c$, $v_1$ and $v_2$ such that $v_1 \neq v_2$.
+\item We require that no row contains the same value
+  in two different columns. To do this, we emit clauses of
+  the form $$
+    (\lnot B_{rc_1v} \lor \lnot B_{rc_2v})
+  $$ for every $r$, $c_1$, $c_2$ and $v$ such that $c_1 \neq c_2$.
+\item We require that no column contains the same value
+  in two different rows. To do this, we emit clauses of
+  the form $$
+    (\lnot B_{r_1cv} \lor \lnot B_{r_2cv})
+  $$ for every $r_1$, $r_2$, $c$ and $v$ such that $r_1 \neq r_2$.
+\item We require that the same value not appear in two
+  different positions in the same sub-board. To do this, we
+  emit clauses of the form $$
+    (\lnot B_{r_1c_1v} \lor \lnot B_{r_2c_2v})
+  $$ for every $r_1$, $r_2$, $c_1$, $c_2$ and $v$ such that
+  $(r_1, c_1) \neq (r_2, c_2)$ but both coordinates are in
+  the same sub-board.
+\end{enumerate}
+
+\section{Decoding The Answer}
+
+Once a satsifying assignment is found for the problem of the
+previous section, it remains to turn this assignment back
+into a solved Sudoku board. To do so, we note that, since
+$board$ is a total function, for each row $r$ and column
+$c$ there will be exactly one value $v$ for which $B_{rcv}$
+is true: this $v$ is the value which should be filled in
+at position $(r, c)$ in the board.
+
+\section{Implementation and Evaluation}
+
+All of this is implemented using two Python programs, one to
+encode and one to extract the answer, together with an
+off-the-shelf SAT solver.
+
+The two SAT solvers I have tried are the readily-available
+open-source solvers Picosat and Minisat2. These solver both
+require the same input format: the famous DIMACS format. In
+this format, one row of text corresponds to one clause. Each
+atom is given a number starting at 1. Positive literals are
+denoted by atom number, negative literals by its integer
+negation. The DIMACS output format is similar.
+
+The running system has been tested on several Sudoku
+instances, including ``the hardest Sudoku'' and another
+``very hard'' instance. End-to-end run times are uniformly
+in the 200 millisecond range. The program has also been
+tested on a blank Sudoku board, generating a filled grid,
+and on an unsolvable Sudoku instance, which it correctly
+repots as unsolvable.
 
 \end{document}
