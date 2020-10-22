@@ -17,7 +17,7 @@ def clause(c):
     clauses.append(c)
 
 # Input the instance.
-problem = stdin.readlines()
+problem = [ l for l in stdin.readlines() if l and l[0] != '#' ]
 for r in range(9):
     for c in range(9):
         if problem[r][c] != '.':

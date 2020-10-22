@@ -8,7 +8,7 @@
 
 # Set some things up.
 PGM="`basename $0`"
-USAGE="$PGM: usage: $PGM [--minisat2|--picosat] [<problem>]"
+USAGE="$PGM: usage: $PGM [--minisat|--picosat] [<problem>]"
 PROBTMP=/tmp/prob.$$
 SOLNTMP=/tmp/soln.$$
 trap "rm -f $PROBTMP $SOLNTMP" 0 1 2 3 15
@@ -16,13 +16,13 @@ trap "rm -f $PROBTMP $SOLNTMP" 0 1 2 3 15
 # Select a solver.
 SOLVER=picosat
 case $1 in
-    --minisat2) SOLVER="minisat2" ; shift ;;
+    --minisat) SOLVER="minisat" ; shift ;;
 esac
 
 # Read from a supplied file, else from standard input.
 case $# in
-    0) egrep -v '^#' | python3 ./sudokugen.py >$PROBTMP ;;
-    1) egrep -v '^#' "$1" | python3 ./sudokugen.py  >$PROBTMP ;;
+    0) python3 ./sudokugen.py >$PROBTMP ;;
+    1) python3 ./sudokugen.py <"$1" >$PROBTMP ;;
     *) echo "$USAGE" >&2 ; exit 1 ;;
 esac
 
@@ -31,8 +31,8 @@ case $SOLVER in
     picosat)
 	picosat $PROBTMP >$SOLNTMP
 	;;
-    minisat2)
-	minisat2 $PROBTMP $SOLNTMP >/dev/null
+    minisat)
+	minisat $PROBTMP $SOLNTMP >/dev/null
 	;;
     *)
 	echo "$PGM: unknown solver" >&2
@@ -53,19 +53,5 @@ case $? in
 	exit 1
 	;;
 esac
-# Clean up the garbage text in the assignment, and
-# pass it to the decoder for display.
-case $SOLVER in
-    picosat)
-	sed -e '/^v /!d' -e 's/^v //' <$SOLNTMP | tr ' ' '\n'
-	;;
-    minisat2)
-	sed -e '/^SAT/d' <$SOLNTMP
-	;;
-    *)
-	echo "$PGM: unknown solver" >&2
-	exit 1
-	;;
-esac |
-python3 ./sudokusolve.py
+python3 ./sudokusolve.py <$SOLNTMP
 exit 10
